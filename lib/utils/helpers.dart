@@ -79,7 +79,7 @@ class AppHelpers {
   static ImageProvider? imageProviderFromUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return null;
 
-    final trimmed = imageUrl.trim();
+    final trimmed = _normalizeImageUrl(imageUrl.trim());
     try {
       if (isBase64ImageString(trimmed)) {
         var base64Data = trimmed;
@@ -101,6 +101,36 @@ class AppHelpers {
     } catch (_) {
       return null;
     }
+  }
+
+  static String _normalizeImageUrl(String imageUrl) {
+    if (imageUrl.isEmpty) return imageUrl;
+
+    try {
+      final uri = Uri.parse(imageUrl);
+      final host = uri.host.toLowerCase();
+      final segments = uri.pathSegments;
+
+      if (host.contains('github.com') && segments.length >= 4) {
+        final type = segments[2].toLowerCase();
+        if ((type == 'blob' || type == 'raw') && segments.length > 3) {
+          final rawSegments = <String>[
+            segments[0],
+            segments[1],
+            ...segments.sublist(3),
+          ];
+          return Uri(
+            scheme: uri.scheme,
+            host: 'raw.githubusercontent.com',
+            pathSegments: rawSegments,
+            queryParameters: null,
+          ).toString();
+        }
+      }
+    } catch (_) {
+      // Jika URL tidak valid, kembalikan apa adanya.
+    }
+    return imageUrl;
   }
 
   static bool _isAssetImagePath(String value) {

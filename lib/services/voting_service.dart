@@ -140,20 +140,20 @@ class VotingService {
       if (candidate.id == 2) {
         final photo1 = candidate.photoUrl1?.startsWith('assets/') == true
             ? candidate.photoUrl1
-            : 'assets/images/kandidat1.jpg';
+            : 'assets/images/kandidat3.jpg';
         final photo2 = candidate.photoUrl2?.startsWith('assets/') == true
             ? candidate.photoUrl2
-            : 'assets/images/kandidat2.jpg';
+            : 'assets/images/kandidat4.jpg';
         return candidate.copyWith(photoUrl1: photo1, photoUrl2: photo2);
       }
 
       if (candidate.id == 3) {
         final photo1 = candidate.photoUrl1?.startsWith('assets/') == true
             ? candidate.photoUrl1
-            : 'assets/images/kandidat1.jpg';
+            : 'assets/images/kandidat5.jpg';
         final photo2 = candidate.photoUrl2?.startsWith('assets/') == true
             ? candidate.photoUrl2
-            : 'assets/images/kandidat2.jpg';
+            : 'assets/images/kandidat6.jpg';
         return candidate.copyWith(photoUrl1: photo1, photoUrl2: photo2);
       }
 

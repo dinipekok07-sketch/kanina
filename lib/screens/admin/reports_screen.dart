@@ -33,7 +33,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void _exportToPDF(BuildContext context) async {
     final candidates = context.read<CandidateProvider>().candidates;
     final totalVotes = context.read<VoteProvider>().totalVotes;
-    final voters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
+    final voters =
+        AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
     final votedCount = voters.where((u) => u.hasVoted).length;
     final session = context.read<ScheduleProvider>().currentSession;
 
@@ -47,7 +48,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             children: [
               pw.Header(
                 level: 0,
-                child: pw.Text('Laporan Hasil Voting', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                child: pw.Text('Laporan Hasil Voting',
+                    style: pw.TextStyle(
+                        fontSize: 24, fontWeight: pw.FontWeight.bold)),
               ),
               pw.SizedBox(height: 20),
               if (session != null) ...[
@@ -61,7 +64,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               pw.Text('Sudah Vote: $votedCount'),
               pw.Text('Belum Vote: ${voters.length - votedCount}'),
               pw.SizedBox(height: 20),
-              pw.Text('Hasil Voting:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Hasil Voting:',
+                  style: pw.TextStyle(
+                      fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 10),
               pw.Table.fromTextArray(
                 headers: ['No', 'Nama Kandidat', 'Suara', 'Persentase'],
@@ -69,7 +74,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   candidates.length,
                   (index) {
                     final candidate = candidates[index];
-                    final percentage = totalVotes > 0 ? (candidate.voteCount / totalVotes * 100).toStringAsFixed(1) : '0.0';
+                    final percentage = totalVotes > 0
+                        ? (candidate.voteCount / totalVotes * 100)
+                            .toStringAsFixed(1)
+                        : '0.0';
                     return [
                       (index + 1).toString(),
                       candidate.getNames,
@@ -105,7 +113,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void _exportToExcel(BuildContext context) async {
     final candidates = context.read<CandidateProvider>().candidates;
     final totalVotes = context.read<VoteProvider>().totalVotes;
-    final voters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
+    final voters =
+        AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
     final votedCount = voters.where((u) => u.hasVoted).length;
     final session = context.read<ScheduleProvider>().currentSession;
 
@@ -113,32 +122,52 @@ class _ReportsScreenState extends State<ReportsScreen> {
     excel.Sheet sheetObject = workbook['Hasil Voting'];
 
     // Header
-    sheetObject.cell(excel.CellIndex.indexByString('A1')).value = excel.TextCellValue('Laporan Hasil Voting');
-    sheetObject.cell(excel.CellIndex.indexByString('A3')).value = excel.TextCellValue('Judul');
-    sheetObject.cell(excel.CellIndex.indexByString('B3')).value = excel.TextCellValue(session?.title ?? '');
-    sheetObject.cell(excel.CellIndex.indexByString('A4')).value = excel.TextCellValue('Deskripsi');
-    sheetObject.cell(excel.CellIndex.indexByString('B4')).value = excel.TextCellValue(session?.description ?? '');
-    sheetObject.cell(excel.CellIndex.indexByString('A5')).value = excel.TextCellValue('Total Suara');
-    sheetObject.cell(excel.CellIndex.indexByString('B5')).value = excel.IntCellValue(totalVotes);
-    sheetObject.cell(excel.CellIndex.indexByString('A6')).value = excel.TextCellValue('Total Pemilih');
-    sheetObject.cell(excel.CellIndex.indexByString('B6')).value = excel.IntCellValue(voters.length);
-    sheetObject.cell(excel.CellIndex.indexByString('A7')).value = excel.TextCellValue('Sudah Vote');
-    sheetObject.cell(excel.CellIndex.indexByString('B7')).value = excel.IntCellValue(votedCount);
+    sheetObject.cell(excel.CellIndex.indexByString('A1')).value =
+        excel.TextCellValue('Laporan Hasil Voting');
+    sheetObject.cell(excel.CellIndex.indexByString('A3')).value =
+        excel.TextCellValue('Judul');
+    sheetObject.cell(excel.CellIndex.indexByString('B3')).value =
+        excel.TextCellValue(session?.title ?? '');
+    sheetObject.cell(excel.CellIndex.indexByString('A4')).value =
+        excel.TextCellValue('Deskripsi');
+    sheetObject.cell(excel.CellIndex.indexByString('B4')).value =
+        excel.TextCellValue(session?.description ?? '');
+    sheetObject.cell(excel.CellIndex.indexByString('A5')).value =
+        excel.TextCellValue('Total Suara');
+    sheetObject.cell(excel.CellIndex.indexByString('B5')).value =
+        excel.IntCellValue(totalVotes);
+    sheetObject.cell(excel.CellIndex.indexByString('A6')).value =
+        excel.TextCellValue('Total Pemilih');
+    sheetObject.cell(excel.CellIndex.indexByString('B6')).value =
+        excel.IntCellValue(voters.length);
+    sheetObject.cell(excel.CellIndex.indexByString('A7')).value =
+        excel.TextCellValue('Sudah Vote');
+    sheetObject.cell(excel.CellIndex.indexByString('B7')).value =
+        excel.IntCellValue(votedCount);
 
     // Table headers
-    sheetObject.cell(excel.CellIndex.indexByString('A9')).value = excel.TextCellValue('No');
-    sheetObject.cell(excel.CellIndex.indexByString('B9')).value = excel.TextCellValue('Nama Kandidat');
-    sheetObject.cell(excel.CellIndex.indexByString('C9')).value = excel.TextCellValue('Suara');
-    sheetObject.cell(excel.CellIndex.indexByString('D9')).value = excel.TextCellValue('Persentase');
+    sheetObject.cell(excel.CellIndex.indexByString('A9')).value =
+        excel.TextCellValue('No');
+    sheetObject.cell(excel.CellIndex.indexByString('B9')).value =
+        excel.TextCellValue('Nama Kandidat');
+    sheetObject.cell(excel.CellIndex.indexByString('C9')).value =
+        excel.TextCellValue('Suara');
+    sheetObject.cell(excel.CellIndex.indexByString('D9')).value =
+        excel.TextCellValue('Persentase');
 
     // Data
     for (int i = 0; i < candidates.length; i++) {
       final candidate = candidates[i];
-      final percentage = totalVotes > 0 ? (candidate.voteCount / totalVotes * 100) : 0.0;
-      sheetObject.cell(excel.CellIndex.indexByString('A${10 + i}')).value = excel.IntCellValue(i + 1);
-      sheetObject.cell(excel.CellIndex.indexByString('B${10 + i}')).value = excel.TextCellValue(candidate.getNames);
-      sheetObject.cell(excel.CellIndex.indexByString('C${10 + i}')).value = excel.IntCellValue(candidate.voteCount);
-      sheetObject.cell(excel.CellIndex.indexByString('D${10 + i}')).value = excel.DoubleCellValue(percentage);
+      final percentage =
+          totalVotes > 0 ? (candidate.voteCount / totalVotes * 100) : 0.0;
+      sheetObject.cell(excel.CellIndex.indexByString('A${10 + i}')).value =
+          excel.IntCellValue(i + 1);
+      sheetObject.cell(excel.CellIndex.indexByString('B${10 + i}')).value =
+          excel.TextCellValue(candidate.getNames);
+      sheetObject.cell(excel.CellIndex.indexByString('C${10 + i}')).value =
+          excel.IntCellValue(candidate.voteCount);
+      sheetObject.cell(excel.CellIndex.indexByString('D${10 + i}')).value =
+          excel.DoubleCellValue(percentage);
     }
 
     try {
@@ -167,10 +196,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         elevation: 0,
       ),
       body: Consumer3<CandidateProvider, VoteProvider, ScheduleProvider>(
-        builder: (context, candidateProvider, voteProvider, scheduleProvider, _) {
+        builder:
+            (context, candidateProvider, voteProvider, scheduleProvider, _) {
           final candidates = candidateProvider.candidates;
           final totalVotes = voteProvider.totalVotes;
-          final voters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
+          final voters =
+              AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
           final votedCount = voters.where((u) => u.hasVoted).length;
           final session = scheduleProvider.currentSession;
 
@@ -276,14 +307,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   itemCount: candidates.length,
                   itemBuilder: (context, index) {
                     final candidate = candidates[index];
-                    final percentage = totalVotes > 0 ? (candidate.voteCount / totalVotes * 100).toStringAsFixed(1) : '0.0';
+                    final imageProvider =
+                        AppHelpers.imageProviderFromUrl(candidate.photoUrl1);
+                    final percentage = totalVotes > 0
+                        ? (candidate.voteCount / totalVotes * 100)
+                            .toStringAsFixed(1)
+                        : '0.0';
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage:
-                              AppHelpers.imageProviderFromUrl(candidate.photoUrl1),
-                          child: AppHelpers.imageProviderFromUrl(candidate.photoUrl1) == null
+                          backgroundColor: imageProvider == null
+                              ? Colors.grey.shade300
+                              : null,
+                          backgroundImage: imageProvider,
+                          child: imageProvider == null
                               ? Text(candidate.id.toString())
                               : null,
                         ),
@@ -325,7 +363,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         Text('Deskripsi: ${session.description}'),
                         Text('Mulai: ${session.startDate}'),
                         Text('Selesai: ${session.endDate}'),
-                        Text('Status: ${session.isActive ? 'Aktif' : 'Tidak Aktif'}'),
+                        Text(
+                            'Status: ${session.isActive ? 'Aktif' : 'Tidak Aktif'}'),
                       ],
                     ),
                   ),

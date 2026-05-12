@@ -95,8 +95,7 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content:
-                  Text('Format gambar harus JPG atau PNG'),
+              content: Text('Format gambar harus JPG atau PNG'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -437,9 +436,7 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
   String? _bytesToDataUri(Uint8List bytes, String? extension) {
     if (extension == null) return null;
     final lower = extension.toLowerCase();
-    final mimeType = lower == 'png'
-        ? 'image/png'
-        : 'image/jpeg';
+    final mimeType = lower == 'png' ? 'image/png' : 'image/jpeg';
     final base64String = base64Encode(bytes);
     return 'data:$mimeType;base64,$base64String';
   }
@@ -506,20 +503,22 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
           // Verify photo was also saved
           final photo1Valid = savedCandidate.photoUrl1 != null &&
               savedCandidate.photoUrl1!.isNotEmpty &&
-              (fotoKetua == null || savedCandidate.photoUrl1 == fotoKetua || 
-               fotoKetua.isEmpty);
+              (fotoKetua == null ||
+                  savedCandidate.photoUrl1 == fotoKetua ||
+                  fotoKetua.isEmpty);
           final photo2Valid = savedCandidate.photoUrl2 != null &&
               savedCandidate.photoUrl2!.isNotEmpty &&
-              (fotoWakil == null || savedCandidate.photoUrl2 == fotoWakil ||
-               fotoWakil.isEmpty);
-          
+              (fotoWakil == null ||
+                  savedCandidate.photoUrl2 == fotoWakil ||
+                  fotoWakil.isEmpty);
+
           debugPrint(
               '[ManageCandidate] ✓ Candidate data verified as saved | Photo1: ${photo1Valid ? 'OK' : 'MISSING'} | Photo2: ${photo2Valid ? 'OK' : 'MISSING'}');
           debugPrint(
               '[ManageCandidate] Photo1 URL length: ${savedCandidate.photoUrl1?.length ?? 0}');
           debugPrint(
               '[ManageCandidate] Photo2 URL length: ${savedCandidate.photoUrl2?.length ?? 0}');
-          
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -851,8 +850,26 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
     if (imageProvider != null) {
       return CircleAvatar(
         radius: 16,
-        backgroundImage: imageProvider,
-        onBackgroundImageError: (_, __) {},
+        backgroundColor: Colors.grey.shade300,
+        child: ClipOval(
+          child: Image(
+            image: imageProvider,
+            width: 32,
+            height: 32,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Center(
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : defaultText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       );
     }
 
