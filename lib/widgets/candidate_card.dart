@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:pemilihan_ketua_kelas_informatika/models/candidate_model.dart';
+import 'package:pemilihan_ketua_kelas_informatika/utils/helpers.dart';
 
 class CandidateCard extends StatelessWidget {
   final CandidateModel candidate;
@@ -186,36 +186,40 @@ class _CandidateAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ImageProvider? imageProvider;
-
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      if (imageUrl!.startsWith('http://') ||
-          imageUrl!.startsWith('https://')) {
-        imageProvider = NetworkImage(imageUrl!);
-      } else if (imageUrl!.length > 100) {
-        try {
-          imageProvider = MemoryImage(base64Decode(imageUrl!));
-        } catch (e) {
-          // Jika gagal decode, fallback ke text
-          imageProvider = null;
-        }
-      }
-    }
+    final imageProvider = AppHelpers.imageProviderFromUrl(imageUrl);
 
     return CircleAvatar(
       radius: 24,
       backgroundColor: const Color(0xFF3182CE),
-      backgroundImage: imageProvider,
-      child: imageProvider == null
-          ? Text(
-              label.isNotEmpty ? label[0].toUpperCase() : 'K',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+      child: ClipOval(
+        child: imageProvider != null
+            ? Image(
+                image: imageProvider,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Center(
+                  child: Text(
+                    label.isNotEmpty ? label[0].toUpperCase() : 'K',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              )
+            : Center(
+                child: Text(
+                  label.isNotEmpty ? label[0].toUpperCase() : 'K',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
               ),
-            )
-          : null,
+      ),
     );
   }
 }

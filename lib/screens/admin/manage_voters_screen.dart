@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/models/user_model.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/auth_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/voting_service.dart';
+import 'package:pemilihan_ketua_kelas_informatika/services/local_storage.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
@@ -21,8 +23,20 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
   final _nimController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _searchController = TextEditingController();
 
   UserModel? _editingUser;
+  String _filterStatus = 'semua'; // 'semua', 'sudah', 'belum'
+  String _sortBy = 'nama'; // 'nama', 'nim', 'status'
+  bool _isLoading = false;
+  static const String _votersStorageKey = 'managed_voters';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() => setState(() {}));
+    _loadManagedVoters();
+  }
 
   @override
   void dispose() {
@@ -30,6 +44,7 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
     _nimController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -39,6 +54,79 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
     _emailController.clear();
     _phoneController.clear();
     _editingUser = null;
+    setState(() {});
+  }
+
+  Future<void> _saveManagedVoters() async {
+    try {
+      final voters = AuthService.dummyUsers.values
+          .where((u) => !u.isAdmin)
+          .toList();
+      final votersJson = voters.map((v) => v.toJson()).toList();
+      await LocalStorage.setString(_votersStorageKey, jsonEncode(votersJson));
+    } catch (e) {
+      debugPrint('Error saving voters: $e');
+    }
+  }
+
+  Future<void> _loadManagedVoters() async {
+    try {
+      final savedData = LocalStorage.getString(_votersStorageKey);
+      if (savedData != null) {
+        final List<dynamic> jsonList = jsonDecode(savedData);
+        for (var json in jsonList) {
+          final user = UserModel.fromJson(json);
+          if (!AuthService.dummyUsers.containsKey(user.nim)) {
+            AuthService.dummyUsers[user.nim] = user;
+            if (!AuthService.dummyNIM.contains(user.nim)) {
+              AuthService.dummyNIM.add(user.nim);
+            }
+          }
+        }
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error loading voters: $e');
+    }
+  }
+
+  List<UserModel> _getFilteredAndSortedVoters() {
+    final voters = AuthService.dummyUsers.values
+        .where((u) => !u.isAdmin)
+        .toList();
+
+    // Search filter
+    List<UserModel> filtered = voters;
+    if (_searchController.text.isNotEmpty) {
+      final searchTerm = _searchController.text.toLowerCase();
+      filtered = voters.where((u) => 
+        u.name.toLowerCase().contains(searchTerm) ||
+        u.nim.toLowerCase().contains(searchTerm) ||
+        u.email.toLowerCase().contains(searchTerm)
+      ).toList();
+    }
+
+    // Status filter
+    if (_filterStatus == 'sudah') {
+      filtered = filtered.where((u) => u.hasVoted).toList();
+    } else if (_filterStatus == 'belum') {
+      filtered = filtered.where((u) => !u.hasVoted).toList();
+    }
+
+    // Sorting
+    switch (_sortBy) {
+      case 'nama':
+        filtered.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'nim':
+        filtered.sort((a, b) => a.nim.compareTo(b.nim));
+        break;
+      case 'status':
+        filtered.sort((a, b) => b.hasVoted ? 1 : -1);
+        break;
+    }
+
+    return filtered;
   }
 
   void _editUser(UserModel user) {
@@ -63,14 +151,15 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
             child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               AuthService.dummyUsers.remove(user.nim);
               AuthService.dummyNIM.remove(user.nim);
+              await _saveManagedVoters();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Pemilih berhasil dihapus')),
               );
-              setState(() {}); // Refresh list
+              setState(() {});
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -236,13 +325,20 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
               Navigator.pop(context);
               try {
                 await VotingService.resetUserVote(user.id);
+                
+                // Update status voting di dummyUsers
+                final updatedUser = user.copyWith(hasVoted: false);
+                AuthService.dummyUsers[user.nim] = updatedUser;
+                await AuthService.setHasVoted(user.nim, false);
+                await _saveManagedVoters();
+
                 if (context.mounted) {
                   context.read<VoteProvider>().fetchVoteResults();
                 }
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Status voting berhasil direset')),
                 );
-                setState(() {}); // Refresh list
+                setState(() {});
               } catch (e) {
                 ErrorDialog.show(
                   context,
@@ -287,8 +383,13 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
                 // Reset status voting semua user
                 final voters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
                 for (var voter in voters) {
-                  AuthService.setHasVoted(voter.nim, false);
+                  final updatedVoter = voter.copyWith(hasVoted: false);
+                  AuthService.dummyUsers[voter.nim] = updatedVoter;
+                  await AuthService.setHasVoted(voter.nim, false);
                 }
+
+                // Simpan ke storage
+                await _saveManagedVoters();
 
                 // Refresh vote results di provider
                 if (context.mounted) {
@@ -302,7 +403,7 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
-                setState(() {}); // Refresh list
+                setState(() {});
               } catch (e) {
                 Navigator.pop(context);
                 ErrorDialog.show(
@@ -331,9 +432,31 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
     final phone = _phoneController.text.trim();
 
     try {
+      setState(() => _isLoading = true);
+
+      // Validasi NIM sudah ada (untuk pengguna baru)
+      if (_editingUser == null && 
+          AuthService.dummyUsers.containsKey(nim)) {
+        ErrorDialog.show(
+          context,
+          title: 'Error',
+          message: 'NIM "$nim" sudah terdaftar di sistem',
+        );
+        return;
+      }
+
       if (_editingUser != null) {
-        // For edit, we need to remove old and add new if NIM changed
+        // Edit: remove old jika NIM berubah
         if (_editingUser!.nim != nim) {
+          // Validasi NIM baru tidak sudah ada
+          if (AuthService.dummyUsers.containsKey(nim)) {
+            ErrorDialog.show(
+              context,
+              title: 'Error',
+              message: 'NIM "$nim" sudah terdaftar di sistem',
+            );
+            return;
+          }
           AuthService.dummyUsers.remove(_editingUser!.nim);
           AuthService.dummyNIM.remove(_editingUser!.nim);
         }
@@ -357,276 +480,436 @@ class _ManageVotersScreenState extends State<ManageVotersScreen> {
           const SnackBar(content: Text('Pemilih berhasil ditambahkan')),
         );
       }
+      await _saveManagedVoters();
       _clearForm();
-      setState(() {}); // Refresh list
+      setState(() {});
     } catch (e) {
       ErrorDialog.show(
         context,
         title: 'Error',
         message: e.toString(),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final voters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).toList();
+    final filteredVoters = _getFilteredAndSortedVoters();
+    final totalVoters = AuthService.dummyUsers.values.where((u) => !u.isAdmin).length;
+    final votedCount = AuthService.dummyUsers.values
+        .where((u) => !u.isAdmin && u.hasVoted)
+        .length;
+    final notVotedCount = totalVoters - votedCount;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kelola Pemilih'),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
-      body: Column(
-        children: [
-          // Reset All Voting Data Button
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Colors.red[50],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Reset Data Voting',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Tombol ini akan menghapus semua data voting dan mereset status voting semua pemilih.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.red,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _resetAllVotingData(context),
-                    icon: const Icon(Icons.delete_forever),
-                    label: const Text('Reset Semua Data Voting'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Data Recovery Button
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            color: Colors.blue[50],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Pemulihan Data',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Jika data kandidat hilang setelah reset, gunakan fitur ini untuk memulihkan.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, '/data-recovery'),
-                    icon: const Icon(Icons.restore),
-                    label: const Text('Buka Data Recovery'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Form Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey[100],
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Statistics Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: Colors.blue[50],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(
-                    _editingUser != null ? 'Edit Pemilih' : 'Tambah Pemilih Baru',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    label: 'NIM',
-                    hintText: '2024230001',
-                    controller: _nimController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'NIM tidak boleh kosong';
-                      }
-                      if (_editingUser == null && AuthService.dummyUsers.containsKey(value)) {
-                        return 'NIM sudah terdaftar';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CustomTextField(
-                    label: 'Nama Lengkap',
-                    hintText: 'Masukkan nama lengkap',
-                    controller: _nameController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CustomTextField(
-                    label: 'Email',
-                    hintText: 'email@informatika4a.ac.id',
-                    controller: _emailController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CustomTextField(
-                    label: 'Nomor Telepon',
-                    hintText: '081234567890',
-                    controller: _phoneController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nomor telepon tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+                  Column(
                     children: [
-                      Expanded(
-                        child: CustomButton(
-                          label: _editingUser != null ? 'Update' : 'Tambah',
-                          onPressed: () => _saveUser(context),
-                          backgroundColor: const Color(0xFF1A5F7A),
+                      Text(
+                        totalVoters.toString(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
                         ),
                       ),
-                      if (_editingUser != null) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _clearForm,
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.grey),
-                            ),
-                            child: const Text('Batal'),
-                          ),
+                      const Text('Total Pemilih', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        votedCount.toString(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
-                      ],
+                      ),
+                      const Text('Sudah Vote', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        notVotedCount.toString(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const Text('Belum Vote', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ],
               ),
             ),
-          ),
 
-          // Voters List
-          Expanded(
-            child: voters.isEmpty
-                ? const Center(
-                    child: Text('Belum ada pemilih'),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: voters.length,
-                    itemBuilder: (context, index) {
-                      final user = voters[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Text(user.name[0].toUpperCase()),
-                          ),
-                          title: Text(user.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('NIM: ${user.nim}'),
-                              Text(
-                                'Status: ${user.hasVoted ? 'Sudah Vote' : 'Belum Vote'}',
-                                style: TextStyle(
-                                  color: user.hasVoted ? Colors.green : Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (user.hasVoted) ...[
-                                IconButton(
-                                  icon: const Icon(Icons.how_to_vote, color: Colors.blue),
-                                  onPressed: () => _showEditVote(context, user),
-                                  tooltip: 'Edit Vote',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_forever, color: Colors.red),
-                                  onPressed: () => _deleteUserVote(context, user),
-                                  tooltip: 'Hapus Vote',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.orange),
-                                  onPressed: () => _resetVotingStatus(context, user),
-                                  tooltip: 'Reset Vote',
-                                ),
-                              ],
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _editUser(user),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteUser(context, user),
-                              ),
-                            ],
+            // Reset All Voting Data Button
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: Colors.red[50],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Reset Data Voting',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tombol ini akan menghapus semua data voting dan mereset status voting semua pemilih.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _resetAllVotingData(context),
+                      icon: const Icon(Icons.delete_forever),
+                      label: const Text('Reset Semua Data Voting'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Data Recovery Button
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.all(16),
+              color: Colors.blue[50],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pemulihan Data',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Jika data kandidat hilang setelah reset, gunakan fitur ini untuk memulihkan.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/data-recovery'),
+                      icon: const Icon(Icons.restore),
+                      label: const Text('Buka Data Recovery'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Form Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[100],
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _editingUser != null ? 'Edit Pemilih' : 'Tambah Pemilih Baru',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      label: 'NIM',
+                      hintText: '2024230001',
+                      controller: _nimController,
+                      enabled: !_isLoading,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'NIM tidak boleh kosong';
+                        }
+                        if (_editingUser == null && AuthService.dummyUsers.containsKey(value)) {
+                          return 'NIM sudah terdaftar';
+                        }
+                        if (_editingUser != null && _editingUser!.nim != value &&
+                            AuthService.dummyUsers.containsKey(value)) {
+                          return 'NIM sudah terdaftar';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      label: 'Nama Lengkap',
+                      hintText: 'Masukkan nama lengkap',
+                      controller: _nameController,
+                      enabled: !_isLoading,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Nama tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      label: 'Email',
+                      hintText: 'email@informatika4a.ac.id',
+                      controller: _emailController,
+                      enabled: !_isLoading,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Email tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      label: 'Nomor Telepon',
+                      hintText: '081234567890',
+                      controller: _phoneController,
+                      enabled: !_isLoading,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Nomor telepon tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            label: _isLoading 
+                              ? 'Loading...' 
+                              : (_editingUser != null ? 'Update' : 'Tambah'),
+                            onPressed: _isLoading ? null : () => _saveUser(context),
+                            backgroundColor: const Color(0xFF1A5F7A),
                           ),
                         ),
-                      );
-                    },
+                        if (_editingUser != null) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isLoading ? null : _clearForm,
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.grey),
+                              ),
+                              child: const Text('Batal'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Search, Filter, Sort
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Column(
+                children: [
+                  // Search
+                  CustomTextField(
+                    label: 'Cari Pemilih',
+                    hintText: 'Cari nama, NIM, atau email',
+                    controller: _searchController,
+                    prefixIcon: Icons.search,
                   ),
-          ),
-        ],
+                  const SizedBox(height: 12),
+                  // Filter dan Sort
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _filterStatus,
+                          decoration: InputDecoration(
+                            labelText: 'Filter',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'semua', child: Text('Semua')),
+                            DropdownMenuItem(value: 'sudah', child: Text('Sudah Vote')),
+                            DropdownMenuItem(value: 'belum', child: Text('Belum Vote')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _filterStatus = value);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _sortBy,
+                          decoration: InputDecoration(
+                            labelText: 'Urutkan',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'nama', child: Text('Nama')),
+                            DropdownMenuItem(value: 'nim', child: Text('NIM')),
+                            DropdownMenuItem(value: 'status', child: Text('Status')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _sortBy = value);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Voters List
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: filteredVoters.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          _searchController.text.isEmpty 
+                            ? 'Belum ada pemilih'
+                            : 'Tidak ada pemilih yang sesuai',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredVoters.length,
+                      itemBuilder: (context, index) {
+                        final user = filteredVoters[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: user.hasVoted ? Colors.green : Colors.orange,
+                              child: Text(
+                                user.name[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            title: Text(user.name),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('NIM: ${user.nim}'),
+                                Text(
+                                  'Status: ${user.hasVoted ? 'Sudah Vote' : 'Belum Vote'}',
+                                  style: TextStyle(
+                                    color: user.hasVoted ? Colors.green : Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (user.hasVoted) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.how_to_vote, color: Colors.blue),
+                                    onPressed: () => _showEditVote(context, user),
+                                    tooltip: 'Edit Vote',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_forever, color: Colors.red),
+                                    onPressed: () => _deleteUserVote(context, user),
+                                    tooltip: 'Hapus Vote',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh, color: Colors.orange),
+                                    onPressed: () => _resetVotingStatus(context, user),
+                                    tooltip: 'Reset Vote',
+                                  ),
+                                ],
+                                IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.blue),
+                                  onPressed: () => _editUser(user),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteUser(context, user),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

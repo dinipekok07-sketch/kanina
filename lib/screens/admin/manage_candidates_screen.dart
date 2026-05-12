@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/models/candidate_model.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/candidate_provider.dart';
+import 'package:pemilihan_ketua_kelas_informatika/utils/helpers.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,6 +30,8 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
   // Byte data untuk menyimpan gambar yang dipilih
   Uint8List? _fotoKetuaBytes;
   Uint8List? _fotoWakilBytes;
+  String? _fotoKetuaExtension;
+  String? _fotoWakilExtension;
 
   // Untuk preview gambar yang sudah ada (saat edit)
   String? _existingFotoKetua;
@@ -73,7 +76,6 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
 
       final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
 
-      // ImagePicker akan handle permission otomatis
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
         imageQuality: 85,
@@ -82,14 +84,41 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
       );
 
       if (pickedFile == null) {
-        // User membatalkan
         if (mounted) {
           setState(() => _isLoadingImage = false);
         }
         return;
       }
 
+      final extension = pickedFile.name.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png'].contains(extension)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Format gambar harus JPG atau PNG'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+          setState(() => _isLoadingImage = false);
+        }
+        return;
+      }
+
       final imageBytes = await pickedFile.readAsBytes();
+      if (imageBytes.lengthInBytes > 5 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ukuran gambar maksimal 5MB'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+          setState(() => _isLoadingImage = false);
+        }
+        return;
+      }
+
       debugPrint('Gambar dipilih: ${pickedFile.path}');
 
       if (!mounted) return;
@@ -97,9 +126,11 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
       setState(() {
         if (candidateNumber == 1) {
           _fotoKetuaBytes = imageBytes;
+          _fotoKetuaExtension = extension;
           _existingFotoKetua = null;
         } else {
           _fotoWakilBytes = imageBytes;
+          _fotoWakilExtension = extension;
           _existingFotoWakil = null;
         }
         _isLoadingImage = false;
@@ -191,8 +222,8 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
   }
 
   // Widget untuk menampilkan preview gambar
-  Widget _buildImagePicker(
-      String title, Uint8List? imageBytes, String? existingUrl, int candidateNumber) {
+  Widget _buildImagePicker(String title, Uint8List? imageBytes,
+      String? existingUrl, int candidateNumber) {
     final bool hasImage =
         imageBytes != null || (existingUrl != null && existingUrl.isNotEmpty);
 
@@ -305,44 +336,18 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
 
   // Helper untuk menampilkan network image atau base64
   Widget _buildNetworkImage(String url) {
-    if (url.startsWith('/9j/') || url.contains('base64') || url.length > 500) {
-      try {
-        return Image.memory(
-          base64Decode(url),
-          height: 150,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorImage();
-          },
-        );
-      } catch (e) {
-        return _buildErrorImage();
-      }
+    final imageProvider = AppHelpers.imageProviderFromUrl(url);
+    if (imageProvider != null) {
+      return Image(
+        image: imageProvider,
+        height: 150,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildErrorImage(),
+      );
     }
 
-    return Image.network(
-      url,
-      height: 150,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          height: 150,
-          color: Colors.grey.shade200,
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) => _buildErrorImage(),
-    );
+    return _buildErrorImage();
   }
 
   Widget _buildErrorImage() {
@@ -370,6 +375,8 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
       _misiController.clear();
       _fotoKetuaBytes = null;
       _fotoWakilBytes = null;
+      _fotoKetuaExtension = null;
+      _fotoWakilExtension = null;
       _existingFotoKetua = null;
       _existingFotoWakil = null;
       _editingCandidate = null;
@@ -385,6 +392,8 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
       _misiController.text = candidate.misi;
       _fotoKetuaBytes = null;
       _fotoWakilBytes = null;
+      _fotoKetuaExtension = null;
+      _fotoWakilExtension = null;
       _existingFotoKetua = candidate.photoUrl1;
       _existingFotoWakil = candidate.photoUrl2;
     });
@@ -403,8 +412,10 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
             child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () {
-              context.read<CandidateProvider>().deleteCandidate(candidate.id);
+            onPressed: () async {
+              await context
+                  .read<CandidateProvider>()
+                  .deleteCandidate(candidate.id);
               if (mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -423,12 +434,14 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
     );
   }
 
-  Future<String?> _convertBytesToBase64(Uint8List bytes) async {
-    try {
-      return base64Encode(bytes);
-    } catch (e) {
-      return null;
-    }
+  String? _bytesToDataUri(Uint8List bytes, String? extension) {
+    if (extension == null) return null;
+    final lower = extension.toLowerCase();
+    final mimeType = lower == 'png'
+        ? 'image/png'
+        : 'image/jpeg';
+    final base64String = base64Encode(bytes);
+    return 'data:$mimeType;base64,$base64String';
   }
 
   Future<void> _saveCandidate(BuildContext context) async {
@@ -449,13 +462,15 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
       String? fotoWakil = _existingFotoWakil;
 
       if (_fotoKetuaBytes != null) {
-        fotoKetua = await _convertBytesToBase64(_fotoKetuaBytes!);
-        debugPrint('[ManageCandidate] Photo 1 encoded: ${fotoKetua?.substring(0, 50)}...');
+        fotoKetua = _bytesToDataUri(_fotoKetuaBytes!, _fotoKetuaExtension);
+        debugPrint(
+            '[ManageCandidate] Photo 1 data URI size: ${fotoKetua?.length ?? 0}');
       }
 
       if (_fotoWakilBytes != null) {
-        fotoWakil = await _convertBytesToBase64(_fotoWakilBytes!);
-        debugPrint('[ManageCandidate] Photo 2 encoded: ${fotoWakil?.substring(0, 50)}...');
+        fotoWakil = _bytesToDataUri(_fotoWakilBytes!, _fotoWakilExtension);
+        debugPrint(
+            '[ManageCandidate] Photo 2 data URI size: ${fotoWakil?.length ?? 0}');
       }
 
       if (_editingCandidate != null) {
@@ -467,22 +482,67 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
           photoUrl1: fotoKetua,
           photoUrl2: fotoWakil,
         );
-        debugPrint('[ManageCandidate] Updating candidate ID: ${updatedCandidate.id}');
-        candidateProvider.updateCandidate(updatedCandidate);
-        
-        // Verify data was saved
-        await Future.delayed(const Duration(milliseconds: 500));
-        final storageInfo = await PersistentStorageService.getStorageInfo();
-        debugPrint('[ManageCandidate] Storage info after save: $storageInfo');
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('✓ Pasangan kandidat berhasil diperbarui dan disimpan'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+        debugPrint(
+            '[ManageCandidate] Updating candidate ID: ${updatedCandidate.id}');
+        await candidateProvider.updateCandidate(updatedCandidate);
+
+        // Verify data was saved by reloading from storage
+        await candidateProvider.fetchCandidates();
+        final savedCandidate = candidateProvider.candidates.firstWhere(
+          (c) => c.id == updatedCandidate.id,
+          orElse: () => CandidateModel(
+              id: -1,
+              name1: '',
+              name2: '',
+              visi: '',
+              misi: '',
+              photoUrl1: '',
+              photoUrl2: '',
+              voteCount: 0),
+        );
+
+        if (savedCandidate.id != -1 &&
+            savedCandidate.name1 == updatedCandidate.name1) {
+          // Verify photo was also saved
+          final photo1Valid = savedCandidate.photoUrl1 != null &&
+              savedCandidate.photoUrl1!.isNotEmpty &&
+              (fotoKetua == null || savedCandidate.photoUrl1 == fotoKetua || 
+               fotoKetua.isEmpty);
+          final photo2Valid = savedCandidate.photoUrl2 != null &&
+              savedCandidate.photoUrl2!.isNotEmpty &&
+              (fotoWakil == null || savedCandidate.photoUrl2 == fotoWakil ||
+               fotoWakil.isEmpty);
+          
+          debugPrint(
+              '[ManageCandidate] ✓ Candidate data verified as saved | Photo1: ${photo1Valid ? 'OK' : 'MISSING'} | Photo2: ${photo2Valid ? 'OK' : 'MISSING'}');
+          debugPrint(
+              '[ManageCandidate] Photo1 URL length: ${savedCandidate.photoUrl1?.length ?? 0}');
+          debugPrint(
+              '[ManageCandidate] Photo2 URL length: ${savedCandidate.photoUrl2?.length ?? 0}');
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                    '✓ Pasangan kandidat berhasil diperbarui dan disimpan permanen'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          debugPrint(
+              '[ManageCandidate] ⚠ Candidate data may not have been saved properly');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                    '⚠ Data tersimpan tapi verifikasi gagal. Silakan coba lagi.'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       } else {
         final newCandidate = CandidateModel(
@@ -495,18 +555,19 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
           photoUrl2: fotoWakil,
           voteCount: 0,
         );
-        debugPrint('[ManageCandidate] Adding new candidate ID: ${newCandidate.id}');
-        candidateProvider.addCandidate(newCandidate);
-        
+        debugPrint(
+            '[ManageCandidate] Adding new candidate ID: ${newCandidate.id}');
+        await candidateProvider.addCandidate(newCandidate);
+
         // Verify data was saved
-        await Future.delayed(const Duration(milliseconds: 500));
         final storageInfo = await PersistentStorageService.getStorageInfo();
         debugPrint('[ManageCandidate] Storage info after save: $storageInfo');
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('✓ Pasangan kandidat berhasil ditambahkan dan disimpan'),
+              content: const Text(
+                  '✓ Pasangan kandidat berhasil ditambahkan dan disimpan'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),
@@ -786,26 +847,18 @@ class _ManageCandidatesScreenState extends State<ManageCandidatesScreen> {
 
   // Helper widget untuk avatar
   Widget _buildAvatar(String? photoUrl, String name, String defaultText) {
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      if (photoUrl.startsWith('/9j/') || photoUrl.contains('base64')) {
-        return CircleAvatar(
-          radius: 16,
-          backgroundImage: MemoryImage(base64Decode(photoUrl)),
-          onBackgroundImageError: (_, __) {},
-        );
-      } else {
-        return CircleAvatar(
-          radius: 16,
-          backgroundImage: NetworkImage(photoUrl),
-          onBackgroundImageError: (_, __) {},
-          child: const Icon(Icons.error, size: 16),
-        );
-      }
+    final imageProvider = AppHelpers.imageProviderFromUrl(photoUrl);
+    if (imageProvider != null) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundImage: imageProvider,
+        onBackgroundImageError: (_, __) {},
+      );
     }
+
     return CircleAvatar(
       radius: 16,
       child: Text(name.isNotEmpty ? name[0].toUpperCase() : defaultText),
     );
   }
 }
-

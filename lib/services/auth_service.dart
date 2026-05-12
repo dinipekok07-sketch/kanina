@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:pemilihan_ketua_kelas_informatika/models/user_model.dart';
+import 'package:pemilihan_ketua_kelas_informatika/models/vote_model.dart';
 import 'package:pemilihan_ketua_kelas_informatika/utils/constants.dart';
 import 'package:pemilihan_ketua_kelas_informatika/utils/exceptions.dart';
 import 'local_storage.dart';
@@ -7,6 +9,7 @@ class AuthService {
   static const String defaultPassword = 'informatika 2024';
   static const String adminUsername = 'admin';
   static const String adminPassword = defaultPassword;
+  static const String _votesKey = 'votes';
 
   static final List<String> dummyNIM = List.generate(
     40,
@@ -71,9 +74,10 @@ class AuthService {
       );
     }
 
-    await _saveCurrentUser(user);
+    final updatedUser = await _syncUserVoteStatus(user);
+    await _saveCurrentUser(updatedUser);
     await LocalStorage.setString(AppConstants.tokenKey, 'dummy_token_$nim');
-    return user;
+    return updatedUser;
   }
 
   static Future<void> logout() async {
@@ -108,6 +112,39 @@ class AuthService {
         await _saveCurrentUser(updatedUser);
       }
     }
+  }
+
+  static Future<bool> _hasUserVotedById(String userId) async {
+    final savedData = LocalStorage.getString(_votesKey);
+    if (savedData == null || savedData.isEmpty) {
+      return false;
+    }
+
+    try {
+      final List<dynamic> jsonList = jsonDecode(savedData);
+      final votes = jsonList
+          .map((json) => VoteModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return votes.any((vote) => vote.userId == userId);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> hasVotedById(String userId) async {
+    return await _hasUserVotedById(userId);
+  }
+
+  static Future<UserModel> _syncUserVoteStatus(UserModel user) async {
+    if (user.role == 'admin') return user;
+
+    final hasVoted = await _hasUserVotedById(user.id);
+    if (hasVoted && !user.hasVoted) {
+      final updatedUser = user.copyWith(hasVoted: true);
+      dummyUsers[user.nim] = updatedUser;
+      return updatedUser;
+    }
+    return user;
   }
 
   static UserModel? getUserById(String id) {

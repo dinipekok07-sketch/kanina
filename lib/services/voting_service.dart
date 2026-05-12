@@ -42,8 +42,8 @@ class VotingService {
           'Membangun Kelas Informatika 4A yang Solid, Kreatif, dan Berprestasi',
       misi:
           '1. Mengadakan study club setiap minggu\n2. Membuat grup diskusi online yang aktif\n3. Mengkoordinir tugas kelompok dengan sistem yang adil\n4. Mengadakan acara kebersamaan kelas (class gathering)',
-      photoUrl1: 'https://i.pravatar.cc/150?img=11',
-      photoUrl2: 'https://i.pravatar.cc/150?img=12',
+      photoUrl1: 'assets/images/kandidat1.jpg',
+      photoUrl2: 'assets/images/kandidat2.jpg',
       voteCount: 0,
     ),
     CandidateModel(
@@ -54,19 +54,19 @@ class VotingService {
           'Mewujudkan Kelas Informatika 4A yang Inovatif dan Berdaya Saing Global',
       misi:
           '1. Mengadakan workshop coding setiap bulan\n2. Membangun portofolio project kelas\n3. Mengikuti lomba-lomba kompetitif\n4. Membuka kelas sharing dengan alumni',
-      photoUrl1: 'https://i.pravatar.cc/150?img=13',
-      photoUrl2: 'https://i.pravatar.cc/150?img=14',
+      photoUrl1: 'assets/images/kandidat3.jpg',
+      photoUrl2: 'assets/images/kandidat4.jpg',
       voteCount: 0,
     ),
     CandidateModel(
       id: 3,
-      name1: 'Dimas fitrian saputra (2024230021)',
-      name2: 'rhado parel pertama nasution (2024230002)',
+      name1: 'tri agustin (2024230016)',
+      name2: 'verlin agustin (2024230019)',
       visi: 'Kelas Informatika 4A yang Harmonis dan Berbasis Teknologi',
       misi:
           '1. Membuat sistem informasi kelas berbasis web\n2. Mengadakan mentoring untuk mahasiswa yang kesulitan\n3. Menjalin komunikasi yang baik antara mahasiswa dan dosen\n4. Mengadakan bakti sosial sebagai bentuk kepedulian',
-      photoUrl1: 'https://i.pravatar.cc/150?img=15',
-      photoUrl2: 'https://i.pravatar.cc/150?img=16',
+      photoUrl1: 'assets/images/kandidat5.jpg',
+      photoUrl2: 'assets/images/kandidat6.jpg',
       voteCount: 0,
     ),
   ];
@@ -75,40 +75,107 @@ class VotingService {
   static Future<List<CandidateModel>> getCandidates() async {
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Load votes from storage
-    await _loadVotes();
+    List<CandidateModel> candidates;
 
     try {
       // Try to load from PersistentStorageService first (more robust for large data)
       final savedCandidates = await PersistentStorageService.loadCandidates();
       if (savedCandidates != null && savedCandidates.isNotEmpty) {
         debugPrint('[VotingService] Loaded ${savedCandidates.length} candidates from PersistentStorage');
-        return savedCandidates;
-      }
-
-      // Fallback to old LocalStorage format
-      final savedData = LocalStorage.getString(_candidatesKey);
-      if (savedData != null) {
-        try {
-          final List<dynamic> jsonList = jsonDecode(savedData);
-          final candidates =
-              jsonList.map((json) => CandidateModel.fromJson(json)).toList();
-          debugPrint('[VotingService] Loaded ${candidates.length} candidates from LocalStorage (old format)');
-          
-          // Migrate to PersistentStorage
+        candidates = savedCandidates;
+        candidates = _migrateAssetCandidatePaths(candidates);
+      } else {
+        // Fallback to old LocalStorage format
+        final savedData = LocalStorage.getString(_candidatesKey);
+        if (savedData != null) {
+          try {
+            final List<dynamic> jsonList = jsonDecode(savedData);
+            candidates =
+                jsonList.map((json) => CandidateModel.fromJson(json)).toList();
+            debugPrint('[VotingService] Loaded ${candidates.length} candidates from LocalStorage (old format)');
+            
+            // Migrate to PersistentStorage
+            await _saveCandidates(candidates);
+          } catch (e) {
+            debugPrint('[VotingService] Error parsing old LocalStorage data: $e');
+            // Initialize with default candidates and save them
+            candidates = _defaultCandidates.map((c) => CandidateModel.fromJson(c.toJson())).toList();
+            await _saveCandidates(candidates);
+            debugPrint('[VotingService] Initialized with default candidates');
+          }
+        } else {
+          // If no saved data, initialize with default candidates and save them
+          debugPrint('[VotingService] No saved data found, initializing with defaults');
+          candidates = _defaultCandidates.map((c) => CandidateModel.fromJson(c.toJson())).toList();
           await _saveCandidates(candidates);
-          return candidates;
-        } catch (e) {
-          debugPrint('[VotingService] Error parsing old LocalStorage data: $e');
+          debugPrint('[VotingService] Default candidates saved to storage');
         }
       }
     } catch (e) {
       debugPrint('[VotingService] Error loading candidates: $e');
+      // Initialize with default candidates and save them
+      candidates = _defaultCandidates.map((c) => CandidateModel.fromJson(c.toJson())).toList();
+      await _saveCandidates(candidates);
+      debugPrint('[VotingService] Default candidates saved to storage after error');
     }
 
-    // If no saved data, return a fresh copy of default data
-    debugPrint('[VotingService] Using default candidates');
-    return _defaultCandidates.map((c) => CandidateModel.fromJson(c.toJson())).toList();
+    // Sync vote counts with actual votes
+    await _syncVoteCounts(candidates);
+
+    return candidates;
+  }
+
+  static List<CandidateModel> _migrateAssetCandidatePaths(List<CandidateModel> candidates) {
+    final updated = candidates.map((candidate) {
+      if (candidate.id == 1) {
+        final photo1 = candidate.photoUrl1?.startsWith('assets/') == true
+            ? candidate.photoUrl1
+            : 'assets/images/kandidat1.jpg';
+        final photo2 = candidate.photoUrl2?.startsWith('assets/') == true
+            ? candidate.photoUrl2
+            : 'assets/images/kandidat2.jpg';
+        return candidate.copyWith(photoUrl1: photo1, photoUrl2: photo2);
+      }
+
+      if (candidate.id == 2) {
+        final photo1 = candidate.photoUrl1?.startsWith('assets/') == true
+            ? candidate.photoUrl1
+            : 'assets/images/kandidat1.jpg';
+        final photo2 = candidate.photoUrl2?.startsWith('assets/') == true
+            ? candidate.photoUrl2
+            : 'assets/images/kandidat2.jpg';
+        return candidate.copyWith(photoUrl1: photo1, photoUrl2: photo2);
+      }
+
+      if (candidate.id == 3) {
+        final photo1 = candidate.photoUrl1?.startsWith('assets/') == true
+            ? candidate.photoUrl1
+            : 'assets/images/kandidat1.jpg';
+        final photo2 = candidate.photoUrl2?.startsWith('assets/') == true
+            ? candidate.photoUrl2
+            : 'assets/images/kandidat2.jpg';
+        return candidate.copyWith(photoUrl1: photo1, photoUrl2: photo2);
+      }
+
+      return candidate;
+    }).toList();
+    return updated;
+  }
+
+  // Sync candidate vote counts with actual votes
+  static Future<void> _syncVoteCounts(List<CandidateModel> candidates) async {
+    await _loadVotes();
+    final voteCounts = <int, int>{};
+    for (var vote in _votes) {
+      voteCounts[vote.candidateId] = (voteCounts[vote.candidateId] ?? 0) + 1;
+    }
+    for (int i = 0; i < candidates.length; i++) {
+      candidates[i] = candidates[i].copyWith(
+        voteCount: voteCounts[candidates[i].id] ?? 0,
+      );
+    }
+    // Save synced candidates
+    await _saveCandidates(candidates);
   }
 
   // Save candidates to storage
@@ -328,9 +395,15 @@ class VotingService {
     // Save updated candidates
     await _saveCandidates(candidates);
 
+    // Ensure no duplicate votes for this user (extra safety)
+    _votes.removeWhere((v) => v.userId == userId);
+
     // Add vote to list and save to storage
     _votes.add(vote);
     await _saveVotes();
+
+    // Update user's hasVoted status
+    await AuthService.setHasVotedById(userId, true);
 
     return vote;
   }
@@ -355,10 +428,10 @@ class VotingService {
   static Future<Map<int, int>> getVoteResults() async {
     await Future.delayed(const Duration(milliseconds: 400));
 
-    final candidates = await getCandidates();
+    await _loadVotes();
     final results = <int, int>{};
-    for (var candidate in candidates) {
-      results[candidate.id] = candidate.voteCount;
+    for (var vote in _votes) {
+      results[vote.candidateId] = (results[vote.candidateId] ?? 0) + 1;
     }
     return results;
   }

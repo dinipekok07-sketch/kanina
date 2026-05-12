@@ -4,6 +4,7 @@ import 'package:pemilihan_ketua_kelas_informatika/config/routes.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/auth_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/candidate_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
+import 'package:pemilihan_ketua_kelas_informatika/services/persistent_storage_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -165,7 +166,140 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Quick Stats
+                  // Storage Status
+                  const Text(
+                    'Status Penyimpanan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: PersistentStorageService.getStorageInfo(),
+                    builder: (context, snapshot) {
+                      final storageInfo = snapshot.data ?? {};
+                      final hasMainStorage = storageInfo['hasMainStorage'] ?? false;
+                      final hasBackup = storageInfo['hasBackup'] ?? false;
+                      final isChunked = storageInfo['isChunked'] ?? false;
+                      final mainSize = storageInfo['mainSize'] ?? 0;
+                      
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: hasMainStorage ? Colors.green[50] : Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: hasMainStorage ? Colors.green[200]! : Colors.orange[200]!,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  hasMainStorage ? Icons.storage : Icons.warning,
+                                  color: hasMainStorage ? Colors.green[700] : Colors.orange[700],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  hasMainStorage ? 'Data Tersimpan Permanen' : 'Penyimpanan Belum Diinisialisasi',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasMainStorage ? Colors.green[700] : Colors.orange[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              hasMainStorage 
+                                ? 'Semua perubahan data kandidat tersimpan secara permanen. Data akan tetap ada meskipun aplikasi di-restart atau browser di-refresh.'
+                                : 'Data kandidat belum tersimpan permanen. Pastikan admin telah menyimpan perubahan kandidat.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: hasMainStorage ? Colors.green[600] : Colors.orange[600],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: hasMainStorage ? Colors.green[100] : Colors.orange[100],
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: hasMainStorage ? Colors.green[300]! : Colors.orange[300]!,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        hasMainStorage ? Icons.check_circle : Icons.warning,
+                                        size: 16,
+                                        color: hasMainStorage ? Colors.green[700] : Colors.orange[700],
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        hasMainStorage ? 'Tersimpan' : 'Belum Tersimpan',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: hasMainStorage ? Colors.green[700] : Colors.orange[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (hasMainStorage) ...[
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[100],
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.blue[300]!),
+                                    ),
+                                    child: Text(
+                                      '${(mainSize / 1024).toStringAsFixed(1)} KB',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (hasBackup) ...[
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple[100],
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.purple[300]!),
+                                    ),
+                                    child: Text(
+                                      'Backup ✓',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple[700],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   const Text(
                     'Statistik Cepat',
                     style: TextStyle(

@@ -14,22 +14,29 @@ import 'package:pemilihan_ketua_kelas_informatika/services/persistent_storage_se
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  try {
+    // Initialize local storage
+    await LocalStorage.init();
+    
+    // Initialize persistent storage service (more robust for web)
+    await PersistentStorageService.init();
 
-  // Initialize local storage
-  await LocalStorage.init();
-  
-  // Initialize persistent storage service (more robust for web)
-  await PersistentStorageService.init();
+    // Create candidate provider instance and preload data
+    final candidateProvider = CandidateProvider();
+    await candidateProvider.preloadCandidates();
 
-  // Preload candidates data to ensure persistence
-  final candidateProvider = CandidateProvider();
-  await candidateProvider.preloadCandidates();
-
-  runApp(const MyApp());
+    runApp(MyApp(candidateProvider: candidateProvider));
+  } catch (e) {
+    // Fallback if initialization fails
+    debugPrint('Error during app initialization: $e');
+    runApp(const MyApp(candidateProvider: null));
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final CandidateProvider? candidateProvider;
+
+  const MyApp({Key? key, this.candidateProvider}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +44,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => CandidateProvider()),
+        if (candidateProvider != null)
+          ChangeNotifierProvider.value(value: candidateProvider!)
+        else
+          ChangeNotifierProvider(create: (_) => CandidateProvider()),
         ChangeNotifierProvider(create: (_) => VoteProvider()),
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
       ],

@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
 class AppHelpers {
   static String formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
@@ -39,7 +43,8 @@ class AppHelpers {
   }
 
   static bool isEmailValid(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     return emailRegex.hasMatch(email);
   }
 
@@ -52,5 +57,53 @@ class AppHelpers {
       }
     }
     return initials;
+  }
+
+  static bool isBase64ImageString(String value) {
+    if (value.isEmpty) return false;
+    final trimmed = value.trim();
+    if (trimmed.startsWith('data:image/')) {
+      return true;
+    }
+    if (trimmed.startsWith('/9j/') || trimmed.startsWith('iVBORw0KGgo')) {
+      return true;
+    }
+    if (trimmed.contains('base64')) {
+      return true;
+    }
+    final normalized = trimmed.replaceAll(RegExp(r'\s+'), '');
+    final base64Regex = RegExp(r'^[A-Za-z0-9+/=]+$');
+    return normalized.length > 80 && base64Regex.hasMatch(normalized);
+  }
+
+  static ImageProvider? imageProviderFromUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+
+    final trimmed = imageUrl.trim();
+    try {
+      if (isBase64ImageString(trimmed)) {
+        var base64Data = trimmed;
+        if (base64Data.startsWith('data:image/')) {
+          final commaIndex = base64Data.indexOf(',');
+          if (commaIndex != -1) {
+            base64Data = base64Data.substring(commaIndex + 1);
+          }
+        }
+        base64Data = base64Data.replaceAll(RegExp(r'\s+'), '');
+        return MemoryImage(base64Decode(base64Data));
+      }
+
+      if (_isAssetImagePath(trimmed)) {
+        return AssetImage(trimmed);
+      }
+
+      return NetworkImage(trimmed);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool _isAssetImagePath(String value) {
+    return value.startsWith('assets/') || value.startsWith('packages/');
   }
 }

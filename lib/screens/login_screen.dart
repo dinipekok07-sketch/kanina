@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/config/routes.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/auth_provider.dart';
+import 'package:pemilihan_ketua_kelas_informatika/services/auth_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/utils/validators.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart';
@@ -46,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Future.microtask(() {
               final route = authProvider.currentUser?.isAdmin == true
                   ? AppRoutes.adminDashboard
-                  : AppRoutes.voting;
+                  : AppRoutes.home;
               Navigator.of(context).pushReplacementNamed(route);
             });
           }
@@ -192,10 +193,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Siswa: 2024230001 - 2024230040\nPassword: informatika 2024',
+                            Text(
+                              'Siswa: 2024230001 - 2024230040\nPassword: ${AuthService.defaultPassword}',
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Admin: ${AuthService.adminUsername}\nPassword: ${AuthService.adminPassword}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,

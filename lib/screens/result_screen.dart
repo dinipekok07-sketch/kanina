@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pemilihan_ketua_kelas_informatika/config/routes.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/candidate_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/vote_result_chart.dart';
@@ -250,11 +251,20 @@ class _ResultScreenState extends State<ResultScreen> {
                       );
                     },
                   ),
+                  const SizedBox(height: 80), // Space for FAB
                 ],
               ),
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        },
+        icon: const Icon(Icons.home),
+        label: const Text('Kembali ke Dashboard'),
+        backgroundColor: const Color(0xFF1A365D),
       ),
     );
   }

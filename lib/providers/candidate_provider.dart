@@ -62,34 +62,33 @@ class CandidateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addCandidate(CandidateModel candidate) {
+  Future<void> addCandidate(CandidateModel candidate) async {
     final existingIndex = _candidates.indexWhere((c) => c.id == candidate.id);
     if (existingIndex != -1) {
       _candidates[existingIndex] = candidate;
-      VotingService.updateCandidate(candidate);
+      await VotingService.updateCandidate(candidate);
     } else {
       _candidates.add(candidate);
-      VotingService.addCandidate(candidate);
+      await VotingService.addCandidate(candidate);
     }
     notifyListeners();
   }
 
-  void updateCandidate(CandidateModel candidate) {
+  Future<void> updateCandidate(CandidateModel candidate) async {
     final index = _candidates.indexWhere((c) => c.id == candidate.id);
     if (index != -1) {
       _candidates[index] = candidate;
-      VotingService.updateCandidate(candidate);
+      await VotingService.updateCandidate(candidate);
       notifyListeners();
     }
   }
 
-  void deleteCandidate(int candidateId) {
+  Future<void> deleteCandidate(int candidateId) async {
     _candidates.removeWhere((c) => c.id == candidateId);
-    VotingService.deleteCandidate(candidateId);
+    await VotingService.deleteCandidate(candidateId);
     if (_selectedCandidate?.id == candidateId) {
       _selectedCandidate = null;
     }
     notifyListeners();
   }
 }
-

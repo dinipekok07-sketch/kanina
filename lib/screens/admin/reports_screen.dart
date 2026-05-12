@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/candidate_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
+import 'package:pemilihan_ketua_kelas_informatika/utils/helpers.dart';
 import 'package:pemilihan_ketua_kelas_informatika/providers/schedule_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/auth_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
@@ -280,10 +281,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: candidate.photoUrl1 != null
-                              ? NetworkImage(candidate.photoUrl1!)
-                              : null,
-                          child: candidate.photoUrl1 == null
+                          backgroundImage:
+                              AppHelpers.imageProviderFromUrl(candidate.photoUrl1),
+                          child: AppHelpers.imageProviderFromUrl(candidate.photoUrl1) == null
                               ? Text(candidate.id.toString())
                               : null,
                         ),

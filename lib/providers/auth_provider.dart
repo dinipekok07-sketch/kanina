@@ -66,8 +66,11 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> checkHasVoted() async {
     if (_currentUser != null) {
-      final hasVoted = AuthService.hasVoted();
-      _currentUser = _currentUser!.copyWith(hasVoted: hasVoted);
+      final hasVoted = await AuthService.hasVotedById(_currentUser!.id);
+      if (hasVoted) {
+        await AuthService.setHasVoted(_currentUser!.nim, true);
+        _currentUser = _currentUser!.copyWith(hasVoted: true);
+      }
       notifyListeners();
     }
   }

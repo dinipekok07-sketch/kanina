@@ -1,301 +1,154 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pemilihan_ketua_kelas_informatika/models/candidate_model.dart';
+import 'local_storage.dart';
 
-/// Service untuk mengelola persistent storage yang lebih robust
-/// Menangani compression dan chunking untuk data besar seperti foto base64
+/// Service untuk menyimpan data kandidat secara permanen menggunakan Hive.
+/// Data tetap tersedia setelah refresh browser, logout/login ulang, atau aplikasi ditutup.
 class PersistentStorageService {
-  static const String _mainKey = 'candidates_v2';
-  static const String _backupKey = 'candidates_backup';
+  static const String _boxName = 'candidate_storage';
+  static const String _dataKey = 'candidates_data';
   static const String _metadataKey = 'candidates_metadata';
-  static const int _chunkSizeLimit = 800000; // 800KB per chunk untuk safety
-  
-  static late SharedPreferences _prefs;
+  static const String _legacyCandidatesKey = 'candidates';
+
+  static late Box _box;
   static bool _isInitialized = false;
 
-  /// Initialize storage service
+  /// Initialize Hive storage service
   static Future<void> init() async {
     if (_isInitialized) return;
-    _prefs = await SharedPreferences.getInstance();
+    await LocalStorage.init();
+    await Hive.initFlutter();
+    _box = await Hive.openBox(_boxName);
     _isInitialized = true;
-    debugPrint('[PersistentStorage] Storage initialized');
+    debugPrint('[PersistentStorage] Hive initialized, box opened');
   }
 
-  /// Save candidates dengan compression dan backup
+  /// Save candidates secara permanen ke Hive.
   static Future<bool> saveCandidates(List<CandidateModel> candidates) async {
-    try {
-      debugPrint('[PersistentStorage] Saving ${candidates.length} candidates...');
-      
-      // Convert to JSON
-      final jsonList = candidates.map((c) => c.toJson()).toList();
-      final jsonString = jsonEncode(jsonList);
-      
-      debugPrint('[PersistentStorage] JSON size: ${jsonString.length} bytes');
+    final jsonList = candidates.map((c) => c.toJson()).toList();
+    final jsonString = jsonEncode(jsonList);
 
-      // Try to save as-is first
-      bool success = await _prefs.setString(_mainKey, jsonString);
-      
-      if (success) {
-        // Save backup
-        await _prefs.setString(_backupKey, jsonString);
-        
-        // Save metadata
-        await _prefs.setString(_metadataKey, jsonEncode({
+    try {
+      await init();
+      debugPrint('[PersistentStorage] Saving ${candidates.length} candidates...');
+
+      await _box.put(_dataKey, jsonString);
+      await _box.put(
+        _metadataKey,
+        jsonEncode({
           'timestamp': DateTime.now().toIso8601String(),
           'count': candidates.length,
           'size': jsonString.length,
           'platform': defaultTargetPlatform.toString(),
-        }));
-        
-        debugPrint('[PersistentStorage] ✓ Successfully saved candidates (${jsonString.length} bytes)');
-        return true;
-      }
-      
-      // If too large and not web, try to compress photos
-      debugPrint('[PersistentStorage] Data too large (${jsonString.length} bytes), attempting chunking...');
-      return await _saveChunked(jsonString);
-      
+          'storage': 'hive',
+        }),
+      );
+
+      debugPrint('[PersistentStorage] ✓ Candidates saved to Hive');
+      return true;
     } catch (e) {
-      debugPrint('[PersistentStorage] ✗ Error saving candidates: $e');
-      // Try one more time with chunking as fallback
+      debugPrint('[PersistentStorage] ✗ Error saving candidates to Hive: $e');
       try {
-        final jsonList = candidates.map((c) => c.toJson()).toList();
-        final jsonString = jsonEncode(jsonList);
-        return await _saveChunked(jsonString);
-      } catch (e2) {
-        debugPrint('[PersistentStorage] ✗ Chunking also failed: $e2');
+        debugPrint('[PersistentStorage] Trying SharedPreferences fallback');
+        await LocalStorage.setString(_legacyCandidatesKey, jsonString);
+        debugPrint('[PersistentStorage] ✓ Candidates saved to SharedPreferences fallback');
+        return true;
+      } catch (fallbackError) {
+        debugPrint('[PersistentStorage] ✗ Fallback save failed: $fallbackError');
         return false;
       }
     }
   }
 
-  /// Load candidates dengan fallback ke backup
+  /// Load candidates dari Hive.
   static Future<List<CandidateModel>?> loadCandidates() async {
     try {
-      debugPrint('[PersistentStorage] Loading candidates...');
-      
-      // Try main storage first
-      String? data = _prefs.getString(_mainKey);
-      
-      if (data == null) {
-        debugPrint('[PersistentStorage] Main storage empty, trying backup...');
-        data = _prefs.getString(_backupKey);
-      }
-      
-      if (data == null) {
-        debugPrint('[PersistentStorage] No saved data found');
+      await init();
+      debugPrint('[PersistentStorage] Loading candidates from Hive...');
+
+      if (!_box.containsKey(_dataKey)) {
+        debugPrint('[PersistentStorage] No candidate data found in Hive');
+        final legacyData = LocalStorage.getString(_legacyCandidatesKey);
+        if (legacyData != null && legacyData.isNotEmpty) {
+          debugPrint('[PersistentStorage] Loading candidates from SharedPreferences fallback');
+          final jsonList = jsonDecode(legacyData) as List<dynamic>;
+          return jsonList
+              .map((json) => CandidateModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+        }
         return null;
       }
 
-      // Check if chunked
-      if (data.startsWith('__CHUNKED__')) {
-        debugPrint('[PersistentStorage] Loading chunked data...');
-        data = await _loadChunked();
-        if (data == null) return null;
+      final rawData = _box.get(_dataKey);
+      if (rawData == null || rawData is! String || rawData.isEmpty) {
+        debugPrint('[PersistentStorage] Candidate data is empty or invalid');
+        final legacyData = LocalStorage.getString(_legacyCandidatesKey);
+        if (legacyData != null && legacyData.isNotEmpty) {
+          debugPrint('[PersistentStorage] Loading candidates from SharedPreferences fallback');
+          final jsonList = jsonDecode(legacyData) as List<dynamic>;
+          return jsonList
+              .map((json) => CandidateModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+        }
+        return null;
       }
 
-      final jsonList = jsonDecode(data) as List<dynamic>;
+      final jsonList = jsonDecode(rawData) as List<dynamic>;
       final candidates = jsonList
           .map((json) => CandidateModel.fromJson(json as Map<String, dynamic>))
           .toList();
-      
-      debugPrint('[PersistentStorage] ✓ Successfully loaded ${candidates.length} candidates');
+
+      debugPrint(
+          '[PersistentStorage] ✓ Loaded ${candidates.length} candidates from Hive');
       return candidates;
-      
     } catch (e) {
-      debugPrint('[PersistentStorage] ✗ Error loading candidates: $e');
+      debugPrint('[PersistentStorage] ✗ Error loading candidates from Hive: $e');
+      final legacyData = LocalStorage.getString(_legacyCandidatesKey);
+      if (legacyData != null && legacyData.isNotEmpty) {
+        try {
+          debugPrint('[PersistentStorage] Loading candidates from SharedPreferences fallback');
+          final jsonList = jsonDecode(legacyData) as List<dynamic>;
+          return jsonList
+              .map((json) => CandidateModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+        } catch (fallbackError) {
+          debugPrint('[PersistentStorage] ✗ Fallback load failed: $fallbackError');
+        }
+      }
       return null;
     }
   }
 
-  /// Compress candidate photos untuk mengurangi ukuran
-  static Future<List<Map<String, dynamic>>> _compressCandidates(
-      List<CandidateModel> candidates) async {
-    final compressed = <Map<String, dynamic>>[];
-    
-    for (var candidate in candidates) {
-      final candidateJson = candidate.toJson();
-      
-      // Compress photoUrl1
-      if (candidateJson['photoUrl1'] != null) {
-        candidateJson['photoUrl1'] = 
-            await _compressBase64Image(candidateJson['photoUrl1'] as String);
-      }
-      
-      // Compress photoUrl2
-      if (candidateJson['photoUrl2'] != null) {
-        candidateJson['photoUrl2'] = 
-            await _compressBase64Image(candidateJson['photoUrl2'] as String);
-      }
-      
-      compressed.add(candidateJson);
-    }
-    
-    return compressed;
-  }
-
-  /// Compress base64 image dengan quality reduction
-  static Future<String> _compressBase64Image(String base64String) async {
-    try {
-      // Jika bukan base64 (URL), return as-is
-      if (!base64String.startsWith('/9j/') && 
-          !base64String.startsWith('iVBORw0KGgo') && 
-          !base64String.contains('base64')) {
-        return base64String;
-      }
-
-      // Decode base64
-      Uint8List imageBytes;
-      try {
-        imageBytes = base64Decode(base64String);
-      } catch (e) {
-        debugPrint('[PersistentStorage] Failed to decode base64: $e');
-        return base64String;
-      }
-
-      // Decode image
-      img.Image? image = img.decodeImage(imageBytes);
-      if (image == null) {
-        return base64String;
-      }
-
-      // Resize jika terlalu besar
-      if (image.width > 600) {
-        image = img.copyResize(image, width: 600);
-        debugPrint('[PersistentStorage] Resized image to 600px');
-      }
-
-      // Encode with lower quality untuk JPEG
-      final compressed = img.encodeJpg(image, quality: 70);
-      final compressedBase64 = base64Encode(compressed);
-      
-      final ratio = ((1 - compressedBase64.length / base64String.length) * 100).toStringAsFixed(1);
-      debugPrint('[PersistentStorage] Image compressed by $ratio%');
-      
-      return compressedBase64;
-      
-    } catch (e) {
-      debugPrint('[PersistentStorage] Error compressing image: $e');
-      return base64String;
-    }
-  }
-
-  /// Save data dengan chunking jika terlalu besar
-  static Future<bool> _saveChunked(String data) async {
-    try {
-      final chunks = <String>[];
-      for (int i = 0; i < data.length; i += _chunkSizeLimit) {
-        chunks.add(data.substring(
-          i,
-          i + _chunkSizeLimit > data.length ? data.length : i + _chunkSizeLimit,
-        ));
-      }
-
-      debugPrint('[PersistentStorage] Saving ${chunks.length} chunks...');
-
-      bool success = await _prefs.setString(
-        _mainKey,
-        '__CHUNKED__:${chunks.length}',
-      );
-
-      if (!success) {
-        debugPrint('[PersistentStorage] ✗ Failed to save chunk metadata');
-        return false;
-      }
-
-      // Save each chunk
-      for (int i = 0; i < chunks.length; i++) {
-        success = await _prefs.setString('candidates_chunk_$i', chunks[i]);
-        if (!success) {
-          debugPrint('[PersistentStorage] ✗ Failed to save chunk $i');
-          return false;
-        }
-      }
-
-      debugPrint('[PersistentStorage] ✓ Successfully saved ${chunks.length} chunks');
-      return true;
-      
-    } catch (e) {
-      debugPrint('[PersistentStorage] ✗ Error in chunking: $e');
-      return false;
-    }
-  }
-
-  /// Load chunked data
-  static Future<String?> _loadChunked() async {
-    try {
-      final metadata = _prefs.getString(_mainKey);
-      if (metadata == null) return null;
-
-      final parts = metadata.split(':');
-      if (parts.length < 2) return null;
-
-      final chunkCount = int.parse(parts[1]);
-      debugPrint('[PersistentStorage] Loading $chunkCount chunks...');
-
-      final chunks = <String>[];
-      for (int i = 0; i < chunkCount; i++) {
-        final chunk = _prefs.getString('candidates_chunk_$i');
-        if (chunk == null) {
-          debugPrint('[PersistentStorage] ✗ Missing chunk $i');
-          return null;
-        }
-        chunks.add(chunk);
-      }
-
-      final data = chunks.join();
-      debugPrint('[PersistentStorage] ✓ Successfully loaded all chunks');
-      return data;
-      
-    } catch (e) {
-      debugPrint('[PersistentStorage] ✗ Error loading chunks: $e');
-      return null;
-    }
-  }
-
-  /// Get storage info untuk debugging
+  /// Get storage info untuk debugging.
   static Future<Map<String, dynamic>> getStorageInfo() async {
+    await init();
     try {
-      final metadata = _prefs.getString(_metadataKey);
-      final mainSize = _prefs.getString(_mainKey)?.length ?? 0;
-      final backupSize = _prefs.getString(_backupKey)?.length ?? 0;
-      
+      final hasData = _box.containsKey(_dataKey);
+      final metadata = _box.get(_metadataKey);
       return {
-        'hasMainStorage': _prefs.containsKey(_mainKey),
-        'hasBackup': _prefs.containsKey(_backupKey),
-        'mainSize': mainSize,
-        'backupSize': backupSize,
+        'hasData': hasData,
         'metadata': metadata != null ? jsonDecode(metadata) : null,
-        'isChunked': _prefs.getString(_mainKey)?.startsWith('__CHUNKED__') ?? false,
+        'storageEngine': 'hive',
+        'platform': defaultTargetPlatform.toString(),
       };
     } catch (e) {
       return {'error': e.toString()};
     }
   }
 
-  /// Clear all candidate data
+  /// Clear all candidate data from Hive.
   static Future<bool> clearCandidates() async {
     try {
-      // Clear main and backup
-      await _prefs.remove(_mainKey);
-      await _prefs.remove(_backupKey);
-      await _prefs.remove(_metadataKey);
-
-      // Clear chunks if any
-      final allKeys = _prefs.getKeys();
-      for (final key in allKeys) {
-        if (key.startsWith('candidates_chunk_')) {
-          await _prefs.remove(key);
-        }
-      }
-
-      debugPrint('[PersistentStorage] ✓ Cleared all candidate data');
+      await init();
+      await _box.delete(_dataKey);
+      await _box.delete(_metadataKey);
+      await LocalStorage.remove(_legacyCandidatesKey);
+      debugPrint('[PersistentStorage] ✓ Cleared candidate data from Hive and fallback storage');
       return true;
     } catch (e) {
-      debugPrint('[PersistentStorage] ✗ Error clearing data: $e');
+      debugPrint('[PersistentStorage] ✗ Error clearing candidate data: $e');
       return false;
     }
   }

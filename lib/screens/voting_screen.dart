@@ -20,8 +20,9 @@ class _VotingScreenState extends State<VotingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = context.read<AuthProvider>();
+      final voteProvider = context.read<VoteProvider>();
       if (authProvider.currentUser != null &&
           authProvider.currentUser!.isAdmin) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -33,17 +34,22 @@ class _VotingScreenState extends State<VotingScreen> {
         Navigator.pop(context);
         return;
       }
-      if (authProvider.currentUser != null &&
-          authProvider.currentUser!.hasVoted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Anda sudah melakukan voting sebelumnya'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        Navigator.pop(context);
-        return;
+
+      // Check if user has voted using vote provider
+      if (authProvider.currentUser != null) {
+        await voteProvider.checkUserVoted(authProvider.currentUser!.id);
+        if (voteProvider.hasVoted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Anda sudah melakukan voting sebelumnya'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pop(context);
+          return;
+        }
       }
+
       context.read<CandidateProvider>().fetchCandidates();
     });
   }
@@ -58,6 +64,15 @@ class _VotingScreenState extends State<VotingScreen> {
         context,
         title: 'Akses Ditolak',
         message: 'Admin tidak dapat melakukan voting.',
+      );
+      return;
+    }
+
+    if (voteProvider.hasVoted) {
+      ErrorDialog.show(
+        context,
+        title: 'Voting Sudah Dilakukan',
+        message: 'Anda sudah melakukan voting sebelumnya.',
       );
       return;
     }

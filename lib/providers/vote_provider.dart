@@ -18,6 +18,13 @@ class VoteProvider extends ChangeNotifier {
   int get totalVotes => _totalVotes;
 
   Future<bool> submitVote(String userId, int candidateId) async {
+    // Prevent duplicate voting
+    if (_hasVoted) {
+      _errorMessage = 'Anda sudah melakukan voting';
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
