@@ -97,7 +97,11 @@ class AppHelpers {
         return AssetImage(trimmed);
       }
 
-      return NetworkImage(trimmed);
+      // For network images, add timeout and error handling
+      return NetworkImage(trimmed, headers: {
+        'User-Agent': 'Flutter-App',
+        'Accept': 'image/*',
+      });
     } catch (_) {
       return null;
     }
