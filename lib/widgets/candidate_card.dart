@@ -9,12 +9,12 @@ class CandidateCard extends StatelessWidget {
   final VoidCallback? onDetail;
 
   const CandidateCard({
-    Key? key,
+    super.key,
     required this.candidate,
     required this.onVote,
     this.isSelected = false,
     this.onDetail,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +37,8 @@ class CandidateCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF1A365D).withOpacity(0.08),
-                      const Color(0xFF3182CE).withOpacity(0.08),
+                      const Color(0xFF1A365D).withValues(alpha: 0.08),
+                      const Color(0xFF3182CE).withValues(alpha: 0.08),
                     ],
                   )
                 : null,
@@ -93,7 +93,7 @@ class CandidateCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3182CE).withOpacity(0.1),
+                  color: const Color(0xFF3182CE).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(

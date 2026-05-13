@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pemilihan_ketua_kelas_informatika/config/routes.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

@@ -8,7 +8,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart'
 import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();

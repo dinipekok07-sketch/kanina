@@ -4,7 +4,7 @@ import 'package:pemilihan_ketua_kelas_informatika/providers/schedule_provider.da
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
 
 class ManageScheduleScreen extends StatefulWidget {
-  const ManageScheduleScreen({Key? key}) : super(key: key);
+  const ManageScheduleScreen({super.key});
 
   @override
   State<ManageScheduleScreen> createState() => _ManageScheduleScreenState();

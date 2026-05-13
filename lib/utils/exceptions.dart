@@ -9,21 +9,17 @@ class AppException implements Exception {
 }
 
 class AuthException extends AppException {
-  AuthException({required String message, String? code})
-      : super(message: message, code: code);
+  AuthException({required super.message, super.code});
 }
 
 class VotingException extends AppException {
-  VotingException({required String message, String? code})
-      : super(message: message, code: code);
+  VotingException({required super.message, super.code});
 }
 
 class NetworkException extends AppException {
-  NetworkException({required String message, String? code})
-      : super(message: message, code: code);
+  NetworkException({required super.message, super.code});
 }
 
 class ValidationException extends AppException {
-  ValidationException({required String message, String? code})
-      : super(message: message, code: code);
+  ValidationException({required super.message, super.code});
 }

@@ -12,7 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/persistent_storage_service.dart';
 
 class ManageCandidatesScreen extends StatefulWidget {
-  const ManageCandidatesScreen({Key? key}) : super(key: key);
+  const ManageCandidatesScreen({super.key});
 
   @override
   State<ManageCandidatesScreen> createState() => _ManageCandidatesScreenState();

@@ -3,7 +3,7 @@ import 'package:pemilihan_ketua_kelas_informatika/services/local_storage.dart';
 import 'dart:convert';
 
 class DataRecoveryScreen extends StatefulWidget {
-  const DataRecoveryScreen({Key? key}) : super(key: key);
+  const DataRecoveryScreen({super.key});
 
   @override
   State<DataRecoveryScreen> createState() => _DataRecoveryScreenState();

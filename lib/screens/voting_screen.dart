@@ -10,7 +10,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/loading_widget.dart';
 
 class VotingScreen extends StatefulWidget {
-  const VotingScreen({Key? key}) : super(key: key);
+  const VotingScreen({super.key});
 
   @override
   State<VotingScreen> createState() => _VotingScreenState();

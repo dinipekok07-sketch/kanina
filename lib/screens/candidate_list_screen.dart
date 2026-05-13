@@ -11,7 +11,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/loading_widget.dart';
 
 class CandidateListScreen extends StatefulWidget {
-  const CandidateListScreen({Key? key}) : super(key: key);
+  const CandidateListScreen({super.key});
 
   @override
   State<CandidateListScreen> createState() => _CandidateListScreenState();

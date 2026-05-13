@@ -36,7 +36,7 @@ void main() async {
 class MyApp extends StatelessWidget {
   final CandidateProvider? candidateProvider;
 
-  const MyApp({Key? key, this.candidateProvider}) : super(key: key);
+  const MyApp({super.key, this.candidateProvider});
 
   @override
   Widget build(BuildContext context) {

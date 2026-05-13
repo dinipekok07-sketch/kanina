@@ -7,7 +7,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/vote_result_chart.dart
 import 'package:pemilihan_ketua_kelas_informatika/widgets/loading_widget.dart';
 
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({Key? key}) : super(key: key);
+  const ResultScreen({super.key});
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();

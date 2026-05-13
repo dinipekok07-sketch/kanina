@@ -35,7 +35,6 @@ class AppThemes {
         secondary: lightSecondary,
         tertiary: lightAccent,
         surface: Colors.white,
-        background: Colors.white,
         error: errorColor,
       ),
       appBarTheme: const AppBarTheme(
@@ -142,7 +141,6 @@ class AppThemes {
         secondary: darkSecondary,
         tertiary: darkAccent,
         surface: Color(0xFF2A2A2A),
-        background: darkBg,
         error: errorColor,
       ),
       appBarTheme: const AppBarTheme(

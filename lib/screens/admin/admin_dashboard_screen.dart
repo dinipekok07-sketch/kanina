@@ -7,7 +7,7 @@ import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/persistent_storage_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+  const AdminDashboardScreen({super.key});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -181,7 +181,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       final storageInfo = snapshot.data ?? {};
                       final hasMainStorage = storageInfo['hasMainStorage'] ?? false;
                       final hasBackup = storageInfo['hasBackup'] ?? false;
-                      final isChunked = storageInfo['isChunked'] ?? false;
                       final mainSize = storageInfo['mainSize'] ?? 0;
                       
                       return Container(

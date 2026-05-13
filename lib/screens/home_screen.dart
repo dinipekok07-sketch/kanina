@@ -10,7 +10,7 @@ import 'package:pemilihan_ketua_kelas_informatika/providers/vote_provider.dart';
 import 'package:pemilihan_ketua_kelas_informatika/utils/helpers.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

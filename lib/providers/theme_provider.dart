@@ -28,10 +28,10 @@ class ThemeProvider extends ChangeNotifier {
       brightness: Brightness.light,
       primaryColor: const Color(0xFF1A5F7A),
       scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.light(
-        primary: const Color(0xFF1A5F7A),
-        secondary: const Color(0xFFFDCB6E),
-        tertiary: const Color(0xFF00B4D8),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF1A5F7A),
+        secondary: Color(0xFFFDCB6E),
+        tertiary: Color(0xFF00B4D8),
         surface: Colors.white,
         background: Colors.white,
       ),
@@ -99,12 +99,12 @@ class ThemeProvider extends ChangeNotifier {
       brightness: Brightness.dark,
       primaryColor: const Color(0xFF00B4D8),
       scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-      colorScheme: ColorScheme.dark(
-        primary: const Color(0xFF00B4D8),
-        secondary: const Color(0xFFFDCB6E),
-        tertiary: const Color(0xFF1A5F7A),
-        surface: const Color(0xFF2A2A2A),
-        background: const Color(0xFF1A1A1A),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF00B4D8),
+        secondary: Color(0xFFFDCB6E),
+        tertiary: Color(0xFF1A5F7A),
+        surface: Color(0xFF2A2A2A),
+        background: Color(0xFF1A1A1A),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF2A2A2A),

@@ -7,7 +7,7 @@ import 'package:pemilihan_ketua_kelas_informatika/utils/helpers.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_button.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -37,24 +37,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   // Profile Avatar
-                  Container(
+                  SizedBox(
                     width: 120,
                     height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1A365D), Color(0xFF3182CE)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF1A365D), Color(0xFF3182CE)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        AppHelpers.getInitials(user.name),
-                        style: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      child: Center(
+                        child: Text(
+                          AppHelpers.getInitials(user.name),
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -156,18 +158,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            const Row(
                               children: [
                                 Icon(
-                                  themeProvider.isDarkMode
-                                      ? Icons.dark_mode
-                                      : Icons.light_mode,
-                                  color: const Color(0xFF1A5F7A),
+                                  Icons.dark_mode,
+                                  color: Color(0xFF1A5F7A),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Text(
                                   'Mode Gelap',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                               ],
                             ),

@@ -11,7 +11,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart'
 import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 
 class ManageVotersScreen extends StatefulWidget {
-  const ManageVotersScreen({Key? key}) : super(key: key);
+  const ManageVotersScreen({super.key});
 
   @override
   State<ManageVotersScreen> createState() => _ManageVotersScreenState();

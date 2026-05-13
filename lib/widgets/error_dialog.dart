@@ -7,12 +7,12 @@ class ErrorDialog extends StatelessWidget {
   final String buttonText;
 
   const ErrorDialog({
-    Key? key,
+    super.key,
     this.title = 'Error',
     required this.message,
     this.onPressed,
     this.buttonText = 'OK',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -7,10 +7,10 @@ class VoteResultChart extends StatelessWidget {
   final bool isPieChart;
 
   const VoteResultChart({
-    Key? key,
+    super.key,
     required this.candidates,
     this.isPieChart = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

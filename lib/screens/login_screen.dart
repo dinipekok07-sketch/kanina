@@ -9,7 +9,7 @@ import 'package:pemilihan_ketua_kelas_informatika/widgets/custom_textfield.dart'
 import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -182,12 +182,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      Center(
+                      const Center(
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               'Data login valid:',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),

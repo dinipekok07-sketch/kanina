@@ -4,7 +4,7 @@ import 'package:pemilihan_ketua_kelas_informatika/services/auth_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/widgets/error_dialog.dart';
 
 class ManageVotingStudentsScreen extends StatefulWidget {
-  const ManageVotingStudentsScreen({Key? key}) : super(key: key);
+  const ManageVotingStudentsScreen({super.key});
 
   @override
   State<ManageVotingStudentsScreen> createState() =>
