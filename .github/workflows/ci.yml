@@ -19,14 +19,22 @@ jobs:
       - name: Install Flutter
         run: |
           git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
-          export PATH="$PATH:$HOME/flutter/bin"
-          flutter --version
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+
+      - name: Verify Flutter installation
+        run: flutter --version
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          export PATH="$PATH:$HOME/flutter/bin"
+          flutter pub get
 
       - name: Analyze code
-        run: flutter analyze
+        run: |
+          export PATH="$PATH:$HOME/flutter/bin"
+          flutter analyze
 
       - name: Run all tests
-        run: flutter test
+        run: |
+          export PATH="$PATH:$HOME/flutter/bin"
+          flutter test
