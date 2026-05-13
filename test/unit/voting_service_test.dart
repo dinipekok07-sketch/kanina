@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pemilihan_ketua_kelas_informatika/services/auth_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/local_storage.dart';
 import 'package:pemilihan_ketua_kelas_informatika/services/voting_service.dart';
 import 'package:pemilihan_ketua_kelas_informatika/utils/exceptions.dart';

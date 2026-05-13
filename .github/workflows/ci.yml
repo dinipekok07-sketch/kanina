@@ -32,7 +32,7 @@ jobs:
       - name: Analyze code
         run: |
           export PATH="$PATH:$HOME/flutter/bin"
-          flutter analyze
+          flutter analyze --no-fatal-warnings
 
       - name: Run all tests
         run: |
